@@ -1,6 +1,6 @@
 # Gerador de Alerta - modelo claudia v1 
 #========================================
-
+  
 source("fun/Rt.r")
 source("fun/data2SE.r")
 source("fun/corrigecasos.r")
