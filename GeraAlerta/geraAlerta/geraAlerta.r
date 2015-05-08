@@ -1,30 +1,5 @@
 # Gerador de Alerta - modelo claudia v1 
 #========================================
-  
-source("fun/Rt.r")
-source("fun/data2SE.r")
-source("fun/corrigecasos.r")
-
-# Abre os dados mais recentes
-#dadosAPS <- paste("../",dadosAPS,sep="")
-d<-read.csv(dadosAPS)
-d<-subset(d,SE>=201001)
-
-listaAPS<-unique(d$APS)
-
-# Correcoes
-# =====================================================================
-# corrige casos pelo atraso de digitacao (usando modelo sobrevida lognormal)
-for(i in 1:10) d$casosm[d$APS==listaAPS[i]] <-corrigecasos(d$casos[d$APS==listaAPS[i]])
-
-tot<-aggregate(d$casosm,by=list(d$SE),sum)
-names(tot)<-c("SE","casosestimados")
-message("correcao da incidencia pelo atraso de notificacao")
-print(tail(tot))
-
-# preencher alguns dados faltantes de clima com a media das outras estacoes (se possivel)
-#m = which(is.na(d$tmin))
-#for (i in m) d$tmin[i]<-(mean(d$tmin[d$SE==d$SE[i]],na.rm=TRUE))
 
 #--------------------------
 #Alerta por APS em 4 niveis
@@ -46,12 +21,38 @@ print(tail(tot))
 #**Vermelho (atividade alta)**
 #- se incidencia > 100:100.000
 
+source("fun/Rt.r")
+source("fun/data2SE.r")
+source("fun/corrigecasos.r")
+
+
+# Abre os dados mais recentes
+#dadosAPS <- paste("../",dadosAPS,sep="")
+#d<-read.csv(dadosAPS)
+
+# Funcao getData pega a tabela mais atual 
+# comecando na semana epidemiologica ini (default 201001)
+# e corrige os dados de notificacao por causa do atraso (modelo lognormal): atualmente unica opcao 
+getData <- function(dadosAPS,correction="lognormal",ini=201001){
+  d<-read.csv(dadosAPS)
+  dd<-subset(d,SE>=ini)
+  listaAPS<-unique(dd$APS)
+  if (correction=="lognormal") for(i in 1:10) dd$casosm[dd$APS==listaAPS[i]] <-corrigecasos(dd$casos[dd$APS==listaAPS[i]])
+  tot<-aggregate(dd$casosm,by=list(dd$SE),sum)
+  names(tot)<-c("SE","casosestimados")
+  message("correcao da incidencia pelo atraso de notificacao")
+  print(tail(tot))
+  list(dd,tot) 
+}
+d<-getData(dadosAPS)
+
+
 # data.frame para colocar os resultados
 SE<-d$SE[d$APS=="AP1"]
 d2 <- expand.grid(SE=SE,APS=listaAPS)
 d2<-merge(d2,d[,c("SE","APS","data","tweets","estacao","casos","casosm","tmin")],by=c("SE","APS"))
 
-# agregar dados de populacao (cuidado, desorganiza tudo!)
+# agregar dados de populacao (cuidado, desorganiza tudo!) # TIRAR
 pop<-read.csv(file="tabelas/populacao2010porAPS_RJ.csv")
 d2<-merge(d2,pop)
 d2<-d2[order(d2$APS,d2$SE),]
